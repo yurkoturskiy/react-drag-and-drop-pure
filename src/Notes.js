@@ -1,5 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
-import ReactDOM from "react-dom";
+import React, { useState, useEffect } from "react";
 
 import "./styles.css";
 
@@ -10,16 +9,18 @@ const initItems = [
 ];
 
 function Notes() {
-  const ghostRef = useRef();
   const [dragItem, setDragItem] = useState();
+  const [lastOverItem, setLastOverItem] = useState();
   const [dragPoint, setDragPoint] = useState({ x: 0, y: 0 });
   const [mousePos, setMousePos] = useState(undefined);
   const [items, setItems] = useState(initItems);
+  
   useEffect(() => {
     document.addEventListener("dragover", onDragOverSpace);
     return () => document.removeEventListener("dragover", onDragOverSpace);
   }, []);
-  async function onDragStart(e, note) {
+
+  const onDragStart = (e, note) => {
     setDragItem(note);
     let x = e.clientX - note.x;
     let y = e.clientY - note.y;
@@ -27,61 +28,69 @@ function Notes() {
       x,
       y
     });
-    // document.addEventListener("dragover", onDragOverSpace);
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("id", note.id);
-  }
+  };
+
   const onDragOver = (e, overItem) => {
     if (e.preventDefault) {
       e.preventDefault(); // Necessary. Allows us to drop.
     }
-    // console.log(e.clientY);
-    if (overItem.order !== dragItem.order) {
-      // console.log(overItem);
-      setItems(() => {
-        var newItems = [];
-        items.forEach(item => {
+    var newOrder = [];
+    var newItems = undefined;
+    setItems(() => {
+      if (overItem !== dragItem && overItem !== lastOverItem) {
+        items.forEach((item, index) => {
+          // Iterate through each item and assign order
           if (dragItem.order < overItem.order) {
-            // console.log("drag towart end");
-            if (item.order < dragItem.order) newItems[item.order] = item;
+            // Drag toward end
+            // keep same order
+            if (item.order < dragItem.order) newOrder[index] = item.order;
+            // Inbetween notes. Replace on one to start
             if (item.order > dragItem.order && item.order <= overItem.order)
-              newItems[item.order - 1] = item;
-            if (item.order > overItem.order) newItems[item.order] = item;
-            if (item.order === dragItem.order) newItems[overItem.order] = item;
-          } else if (dragItem.order > overItem.order) {
-            // console.log("drag toward start");
-            if (item.order > dragItem.order) newItems[item.order] = item;
+              newOrder[index] = item.order - 1;
+            // Keep same order. Note is out for range
+            if (item.order > overItem.order) newOrder[index] = item.order;
+            // Assign new order to draggable
+            if (item.order === dragItem.order) newOrder[index] = overItem.order;
+          }
+          if (dragItem.order > overItem.order) {
+            // Drag toward start
+            // keep same order
+            if (item.order > dragItem.order) newOrder[index] = item.order;
+            // Inbetween notes. Replace on one to start
             if (item.order < dragItem.order && item.order >= overItem.order)
-              newItems[item.order + 1] = item;
-            if (item.order < overItem.order) newItems[item.order] = item;
-            if (item.order === dragItem.order) newItems[overItem.order] = item;
+              newOrder[index] = item.order + 1;
+            // Keep same order. Note is out for range
+            if (item.order < overItem.order) newOrder[index] = item.order;
+            // Assign new order to draggable
+            if (item.order === dragItem.order) newOrder[index] = overItem.order;
           }
         });
-        newItems.map((item, index) => {
-          item.order = index;
-          item.x = index * 112;
+        newItems = items.map((item, index) => {
+          item.order = newOrder[index];
+          item.x = newOrder[index] * 112;
           return item;
         });
-        return newItems;
-      });
-    }
+      }
+      if (newItems) return newItems;
+      return items;
+    });
+    setLastOverItem(overItem);
   };
-  const onDrop = (e, cat) => {
-    // console.log(cat);
-  };
+
   const onDragEnd = (e, note) => {
+    // Cleanup after dragging
     setDragItem(undefined);
+    setLastOverItem(undefined);
+    setDragPoint(undefined);
     setMousePos(undefined);
-    // document.removeEventListener("dragover", onDragOverSpace);
   };
 
   const onDragOverSpace = e => {
-    // console.log(dragPoint);
-    // if (mousePos.x != e.clientX || mousePos.y != e.clientY) {
     setMousePos({ x: e.clientX, y: e.clientY });
-    // console.log(mousePos);
-    // }
   };
+
   return (
     <div className="App">
       {items.map(note => (
@@ -91,13 +100,11 @@ function Notes() {
           key={note.content}
           onDragStart={e => onDragStart(e, note)}
           onDragOver={e => onDragOver(e, note)}
-          onDrop={e => onDrop(e, "complete")}
           onDragEnd={e => onDragEnd(e, note)}
           style={{
             opacity: dragItem === note ? 0 : 1,
             left: `${note.x}px`,
             top: `${note.y}px`
-            // transform: `translate(${note.x}px, ${note.y}px)`
           }}
         >
           <p>{note.content}</p>
