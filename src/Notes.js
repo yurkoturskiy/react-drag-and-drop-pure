@@ -3,9 +3,9 @@ import React, { useState, useEffect } from "react";
 import "./styles.css";
 
 const initItems = [
-  { id: 1, content: "one", order: 0 },
-  { id: 2, content: "two", order: 1 },
-  { id: 3, content: "three", order: 2 }
+  { id: "1", content: "one", order: 0 },
+  { id: "2", content: "two", order: 1 },
+  { id: "3", content: "three", order: 2 }
 ];
 
 // Items positioning methods
@@ -17,88 +17,64 @@ const getYPos = item => {
   return `8px`;
 };
 
+var longPress;
+
 function Notes() {
   // General
   const [items, setItems] = useState(initItems);
   const [cursorPos, setCursorPos] = useState(undefined); // Pos of mouse or touch
   const [lastRearrangedItemId, setLastRearrangedItemId] = useState();
-  const [UILog, setUILog] = useState();
   // Touch events
   const [isTouch, setIsTouch] = useState(false);
-  const [touchStatus, setTouchStatus] = useState("not active");
   const [touchOverId, setTouchOverId] = useState(undefined);
   // Drag events
-  const [dndStatus, setDndStatus] = useState("not active");
   const [dragItem, setDragItem] = useState();
   const [dragPoint, setDragPoint] = useState({ x: 0, y: 0 });
+  // Monitors. Could be removed
+  const [touchStatus, setTouchStatus] = useState("not active");
+  const [dndStatus, setDndStatus] = useState("not active");
+  const [UILog, setUILog] = useState();
 
-  useEffect(() => {
-    document.addEventListener("dragover", onDragOverSpace);
-    return () => document.removeEventListener("dragover", onDragOverSpace);
-  }, []);
+  /////////////////////
+  /* Events' methods */
+  /////////////////////
 
-  const onTouchStart = e => {
-    e.preventDefault && e.preventDefault();
-    setTouchStatus("touch start");
-    setIsTouch(true);
-    setCursorPos({ x: e.touches[0].clientX, y: e.touches[0].clientY });
-    let fingers = e.touches.length;
-    let pos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    setTouchStatus(
-      `touch start. Fingers: ${fingers}. X: ${pos.x}, Y: ${pos.y}`
-    );
-  };
-
-  const onTouchMove = e => {
-    e.preventDefault && e.preventDefault();
-    setTouchStatus("touch move");
-    setCursorPos({ x: e.touches[0].clientX, y: e.touches[0].clientY });
-    let overObjectId = document.elementFromPoint(
-      e.touches[0].clientX,
-      e.touches[0].clientY
-    ).id;
-    setTouchOverId(overObjectId);
-    setUILog("Note Rearranging");
-    if (overObjectId && dragItem && lastRearrangedItemId !== overObjectId) {
-      setUILog("rearranging");
-      items.forEach(item => {
-        if (Object.values(item).indexOf(overObjectId) > -1) {
-          overObjectId = Object.values(item).indexOf(overObjectId);
-        }
-      });
-      rearrangeItems(items[overObjectId - 1]);
+  const getItemById = id => {
+    // Return object with required id from items array
+    let indexOfItem;
+    for (var i = 0, len = items.length; i < len; i++) {
+      if (items[i].id === id) {
+        indexOfItem = i;
+        break;
+      }
     }
+    // not support IE8
+    // let indexOfItem = items.findIndex(item => item.id === id);
+    return items[indexOfItem];
   };
 
-  const onTouchEnd = e => {
-    setIsTouch(false);
-    setTouchStatus("touch end");
-    setDragItem(undefined);
-  };
-
-  const onDragStart = (e, note) => {
-    setDndStatus("drag start");
-    setDragItem(note);
-
-    const dragElement = document.getElementById(note.id);
-    console.log(e.clientX - (e.clientX - dragElement.offsetLeft));
+  const initDrag = (cursor, item) => {
+    /* Initialize dragging via assigning dragPoint and dragItem
+    Require arguments: 
+      cursor: {x, y} // clientX, clientY of a mouse or a touch
+      item: {id, content, order} // Objects from items array
+    */
+    let dragElement = document.getElementById(item.id);
     setDragPoint({
-      x: (isTouch ? cursorPos.x : e.clientX) - dragElement.offsetLeft,
-      y: (isTouch ? cursorPos.y : e.clientY) - dragElement.offsetTop
+      x: cursor.x - dragElement.offsetLeft,
+      y: cursor.y - dragElement.offsetTop
     });
-
-    setCursorPos({ x: e.clientX, y: e.clientY });
+    setDragItem(item);
   };
 
   const rearrangeItems = overItem => {
     var newOrder = [];
-    var newItems = undefined;
+    var newItems;
     setItems(() => {
       if (overItem !== dragItem && overItem.id !== lastRearrangedItemId) {
-        setDndStatus("drag over");
         items.forEach((item, index) => {
           newOrder[index] = item.order; // Item is out of range. Keep same order
-          // For item needs to be changed
+          // Override for items need to be changed
           if (dragItem.order < overItem.order) {
             // Drag toward the end
             if (item.order > dragItem.order && item.order <= overItem.order)
@@ -129,7 +105,78 @@ function Notes() {
     setLastRearrangedItemId(overItem.id);
   };
 
+  const cleanupDrag = () => {
+    setDndStatus("not active");
+    setDragItem(undefined);
+    setLastRearrangedItemId(undefined);
+    setCursorPos(undefined);
+    setDragPoint(undefined);
+  };
+
+  //////////////////////////
+  /* Touch screens events */
+  //////////////////////////
+
+  const onTouchStart = e => {
+    e.preventDefault && e.preventDefault();
+    const touchPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    const fingers = e.touches.length;
+    setTouchStatus("start");
+    setIsTouch(true);
+    setCursorPos({ x: touchPos.x, y: touchPos.y });
+    longPress =
+      fingers === 1 &&
+      setTimeout(() => {
+        let touchElement = document.elementFromPoint(touchPos.x, touchPos.y);
+        initDrag(
+          { x: touchPos.x, y: touchPos.y },
+          getItemById(touchElement.id)
+        );
+      }, 500);
+  };
+
+  const onTouchMove = e => {
+    e.preventDefault && e.preventDefault();
+    setTouchStatus("move");
+    !dragItem && clearTimeout(longPress);
+    setCursorPos({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+    let overObjectId = document.elementFromPoint(
+      e.touches[0].clientX,
+      e.touches[0].clientY
+    ).id;
+    setTouchOverId(overObjectId);
+    if (overObjectId && dragItem && lastRearrangedItemId !== overObjectId) {
+      setUILog("rearranging");
+      let overTouchItem = getItemById(overObjectId);
+      rearrangeItems(overTouchItem);
+    }
+  };
+
+  const onTouchEnd = e => {
+    !dragItem && clearTimeout(longPress); // Cancel drag event for touch scn
+    dragItem && cleanupDrag();
+    setIsTouch(false);
+    setTouchStatus("end");
+  };
+
+  //////////////////
+  /* Mouse events */
+  //////////////////
+
+  useEffect(() => {
+    document.addEventListener("dragover", onDragOverSpace);
+    return () => document.removeEventListener("dragover", onDragOverSpace);
+  }, []);
+
+  const onDragStart = (e, note) => {
+    isTouch && e.preventDefault();
+    setDndStatus(isTouch ? dndStatus : "start");
+    setCursorPos({ x: e.clientX, y: e.clientY });
+    !isTouch && initDrag({ x: e.clientX, y: e.clientY }, note);
+  };
+
   const onDragOverItem = (e, overItem) => {
+    setDndStatus("Over item");
     if (e.preventDefault) {
       e.preventDefault(); // Necessary. Allows us to drop.
     }
@@ -137,20 +184,20 @@ function Notes() {
   };
 
   const onDragOverSpace = e => {
+    setDndStatus("Dragging around");
     setCursorPos({ x: e.clientX, y: e.clientY });
   };
 
   const onDragEnd = (e, note) => {
-    setDndStatus("drag end");
     // Cleanup after dragging
-    setDragItem(undefined);
-    setLastRearrangedItemId(undefined);
-    setDragPoint(undefined);
-    setCursorPos(undefined);
+    cleanupDrag();
   };
 
-  // Setup ghost on render
-  let ghost;
+  ///////////////////////////
+  /* Prepare render values */
+  ///////////////////////////
+
+  let ghost; // Setup ghost on render
   if (dragItem) {
     ghost = {
       item: dragItem,
