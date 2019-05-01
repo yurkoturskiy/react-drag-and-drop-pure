@@ -1,5 +1,5 @@
 import React from "react";
-import Draggable from "./Draggable";
+import DraggableMasonryLayout from "./DraggableMasonryLayout";
 
 import "./styles.css";
 
@@ -10,21 +10,22 @@ const nodes = [
 ];
 
 function Notes() {
-  const notes = nodes.map(note => (
+  const notes = nodes.map((node, index) => (
     <div
-      id={note.id}
-      node={note}
+      id={node.id}
+      index={index}
+      order={index}
       draggable="true"
       className={`note`}
-      key={note.content}
+      key={node.id}
     >
-      <p>{note.content}</p>
+      <p>{node.content}</p>
     </div>
   ));
 
   return (
     <div className="App">
-      <Draggable>{notes}</Draggable>
+      <DraggableMasonryLayout>{notes}</DraggableMasonryLayout>
     </div>
   );
 }
