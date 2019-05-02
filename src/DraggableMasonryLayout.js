@@ -103,8 +103,8 @@ function DraggableMasonryLayout(props) {
       });
       setItems(newItems);
       setIsRearranges(true);
-      setLastRearrangedItemId(!isRearranges && overItem.id);
     }
+    setLastRearrangedItemId(!isRearranges && overItem.id);
   };
 
   const cleanupDrag = () => {
