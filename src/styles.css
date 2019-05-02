@@ -12,12 +12,16 @@ body {
 .note {
   background-color: white;
   border-radius: 4px;
-  width: 100px;
-  height: 100px;
-  position: absolute;
+  width: 128px;
+  height: 128px;
+  margin: 8px;
   box-shadow: 0px 1px 1px 0px rgba(0, 0, 0, 0.2);
-  transition: left 0.2s, top 0.2s, right 0.2s, box-shadow 0.2s;
+  transition: left 0.1s, top 0.1s, right 0.1s, box-shadow 0.2s;
   touch-action: none;
+}
+
+.note:hover {
+  box-shadow: 0px 2px 12px 0px rgba(0, 0, 0, 0.3);
 }
 
 .hoverable:hover {
@@ -26,6 +30,5 @@ body {
 }
 
 .ghost {
-  pointer-events: none;
   box-shadow: 0px 3px 26px 0px rgba(0, 0, 0, 0.3);
 }
