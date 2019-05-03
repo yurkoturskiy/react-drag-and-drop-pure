@@ -1,4 +1,5 @@
 import React from "react";
+import Note from "./Note";
 import Draggable from "./Draggable";
 import DraggableMasonryLayout from "./DraggableMasonryLayout";
 
@@ -30,18 +31,9 @@ const nodes = [
 
 function Notes() {
   const notes = nodes.map((node, index) => (
-    <div
-      id={node.id}
-      height={node.height}
-      index={index}
-      order={index}
-      draggable="true"
-      className="note"
-      key={node.id}
-      style={{ height: `${node.height}px` }}
-    >
+    <Note node={node} index={index} key={node.id}>
       <p>{node.content}</p>
-    </div>
+    </Note>
   ));
 
   return (
