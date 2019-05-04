@@ -164,6 +164,7 @@ function DraggableMasonryLayout(props) {
   }, []);
 
   const onDragStart = (e, item) => {
+    console.log("drag start", item);
     isTouch && e.preventDefault();
     setCursorPos({ x: e.clientX, y: e.clientY });
     !isTouch && initDrag({ x: e.clientX, y: e.clientY }, item);
@@ -301,77 +302,71 @@ function DraggableMasonryLayout(props) {
     }
   });
 
-  useEffect(
-    () => {
-      // if number of children changed
-      setTransition(() => {
-        if (props.children.length > layout.elements.length) {
-          // disable transition for infinite scroll
-          return false;
-        } else if (props.children.length === layout.elements.length) {
-          // enable for creation or change
-          return true;
-        } else if (props.children.length < layout.elements.length) {
-          // enable for deletion
-          return true;
-        }
-      });
-    },
-    [props.children.length]
-  );
-
-  useEffect(
-    () => {
-      // set layout
-      var elements = [];
-      var endline = layout.endline;
-      var cardWrapperWidth;
-      endline.byColumns = [];
-      for (let i = 0; i < columns; i++) {
-        endline.byColumns[i] = 0;
+  useEffect(() => {
+    // if number of children changed
+    setTransition(() => {
+      if (props.children.length > layout.elements.length) {
+        // disable transition for infinite scroll
+        return false;
+      } else if (props.children.length === layout.elements.length) {
+        // enable for creation or change
+        return true;
+      } else if (props.children.length < layout.elements.length) {
+        // enable for deletion
+        return true;
       }
-      let itemsSortedByOrder = items.concat().sort((a, b) => a.order - b.order);
-      itemsSortedByOrder.forEach((item, index) => {
-        // Calculate positions of each element
-        let cardWrapperElement = document.getElementById(`${item.id}-wrapper`);
-        let cardElement = document.getElementById(item.id);
-        let height = cardWrapperElement.offsetHeight;
-        cardWrapperWidth = cardWrapperElement.offsetWidth;
-        let leastNum = Math.min(...endline.byColumns);
-        let leastNumIndex = endline.byColumns.indexOf(leastNum);
-        let x = leastNumIndex * cardWrapperWidth;
-        let y = endline.byColumns[leastNumIndex];
-        let cardWidth = cardElement.offsetWidth;
-        let cardHeight = cardElement.offsetHeight;
-        let cardOffsetLeft = cardElement.offsetLeft;
-        let cardOffsetTop = cardElement.offsetTop;
-        elements[item.index] = {
-          x,
-          y,
-          cardWidth,
-          cardHeight,
-          cardOffsetLeft,
-          cardOffsetTop
-        };
-        endline.byColumns[leastNumIndex] += height;
-      });
-      endline.start.x =
-        cardWrapperWidth *
-        endline.byColumns.indexOf(Math.min(...endline.byColumns));
-      endline.start.y = Math.min(...endline.byColumns);
-      endline.end.x =
-        cardWrapperWidth *
-        endline.byColumns.indexOf(Math.max(...endline.byColumns));
-      endline.end.y = Math.max(...endline.byColumns);
-      setLayout({
-        elements: elements, // list of all elements with coorditares
-        width: cardWrapperWidth * columns, // width of the whole layout
-        height: endline.end.y, // height of the whole layout
-        endline: endline
-      });
-    },
-    [columns, onLoadCount, onErrorCount, props.children, items]
-  );
+    });
+  }, [props.children.length]);
+
+  useEffect(() => {
+    // set layout
+    var elements = [];
+    var endline = layout.endline;
+    var cardWrapperWidth;
+    endline.byColumns = [];
+    for (let i = 0; i < columns; i++) {
+      endline.byColumns[i] = 0;
+    }
+    let itemsSortedByOrder = items.concat().sort((a, b) => a.order - b.order);
+    itemsSortedByOrder.forEach((item, index) => {
+      // Calculate positions of each element
+      let cardWrapperElement = document.getElementById(`${item.id}-wrapper`);
+      let cardElement = document.getElementById(item.id);
+      let height = cardWrapperElement.offsetHeight;
+      cardWrapperWidth = cardWrapperElement.offsetWidth;
+      let leastNum = Math.min(...endline.byColumns);
+      let leastNumIndex = endline.byColumns.indexOf(leastNum);
+      let x = leastNumIndex * cardWrapperWidth;
+      let y = endline.byColumns[leastNumIndex];
+      let cardWidth = cardElement.offsetWidth;
+      let cardHeight = cardElement.offsetHeight;
+      let cardOffsetLeft = cardElement.offsetLeft;
+      let cardOffsetTop = cardElement.offsetTop;
+      elements[item.index] = {
+        x,
+        y,
+        cardWidth,
+        cardHeight,
+        cardOffsetLeft,
+        cardOffsetTop
+      };
+      endline.byColumns[leastNumIndex] += height;
+    });
+    endline.start.x =
+      cardWrapperWidth *
+      endline.byColumns.indexOf(Math.min(...endline.byColumns));
+    endline.start.y = Math.min(...endline.byColumns);
+    endline.end.x =
+      cardWrapperWidth *
+      endline.byColumns.indexOf(Math.max(...endline.byColumns));
+    endline.end.y = Math.max(...endline.byColumns);
+    setLayout({
+      elements: elements, // list of all elements with coorditares
+      width: cardWrapperWidth * columns, // width of the whole layout
+      height: endline.end.y, // height of the whole layout
+      endline: endline
+    });
+  }, [columns, onLoadCount, onErrorCount, props.children, items]);
 
   const errorHandler = index => {
     setOnErrorCount(onErrorCount + 1);
@@ -384,6 +379,17 @@ function DraggableMasonryLayout(props) {
 
   renderChildren = React.Children.map(props.children, (child, index) => {
     // Change eash child
+    let cloneChild = React.cloneElement(child, {
+      draggableItem: {
+        draggable: "true",
+        onDragStart: e => onDragStart(e, items[index]),
+        onDragOver: e => onDragOverItem(e, items[index]),
+        onDragEnd: e => onDragEnd(e, items[index]),
+        onTouchStart: onTouchStart,
+        onTouchMove: onTouchMove,
+        onTouchEnd: onTouchEnd
+      }
+    });
     let newComponent = (
       <div
         className="element-bounding"
@@ -403,26 +409,7 @@ function DraggableMasonryLayout(props) {
         onError={errorHandler}
         onTransitionEnd={e => setIsRearranges(false)}
       >
-        {layout.elements[index] && (
-          <div
-            draggable="true"
-            id={`${child.key}-draggable`}
-            onDragStart={e => onDragStart(e, items[index])}
-            onDragOver={e => onDragOverItem(e, items[index])}
-            onDragEnd={e => onDragEnd(e, items[index])}
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            onTouchEnd={onTouchEnd}
-            style={{
-              position: "absolute",
-              left: layout.elements[index].cardOffsetLeft,
-              top: layout.elements[index].cardOffsetTop,
-              width: layout.elements[index].cardWidth,
-              height: layout.elements[index].cardHeight
-            }}
-          />
-        )}
-        {child}
+        {cloneChild}
       </div>
     );
     return newComponent;

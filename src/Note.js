@@ -7,6 +7,7 @@ function Note(props) {
       className="note"
       id={props.node.id}
       style={{ height: `${props.node.height}px` }}
+      {...props.draggableItem}
     >
       <p>{props.node.content}</p>
     </div>
