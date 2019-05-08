@@ -28,17 +28,18 @@ var ghost;
 //////////////////////////////
 
 function DraggableMasonryLayout(props) {
-  // General
-  const [items, setItems] = useState(() =>
+  const generateItems = () => (
     props.children.map((child, index) => {
-      console.log("init item");
+      console.log("init item")
       return {
         index: index,
         id: child.key,
         order: index
-      };
+      }
     })
-  );
+  )
+  // General
+  const [items, setItems] = useState(() => generateItems());
   const [overItem, setOverItem] = useState(undefined);
   const [cursorPosX, setCursorPosX] = useState(undefined);
   const [cursorPosY, setCursorPosY] = useState(undefined);
@@ -51,6 +52,8 @@ function DraggableMasonryLayout(props) {
   const [dragItem, setDragItem] = useState();
   const [preventClick, setPreventClick] = useState();
   const [dragPoint, setDragPoint] = useState({ x: 0, y: 0 });
+
+
 
   /////////////////////
   /* Events' methods */
@@ -257,7 +260,24 @@ function DraggableMasonryLayout(props) {
   ////////////////////
   /* Masonry Layout */
   ////////////////////
+  const cloneChildren = () => React.Children.map(props.children, (child, index) => (
+      // Change eash child
+      React.cloneElement(child, {
+        draggableItem: {
+          // draggable: "true",
+          onMouseDown: e => onMouseDown(e, items[index]),
+          onMouseEnter: e => onMouseEnterItem(e, items[index]),
+          // onDragOver: e => onDragOverItem(e, items[index]),
+          onDragEnd: e => onDragEnd(e, items[index]),
+          onTouchStart: onTouchStart,
+          onTouchMove: onTouchMove,
+          onTouchEnd: onTouchEnd,
+          onClick: onClickEvent
+        }
+      })
+    ))
 
+  const [modChildren, setModChildren] = useState(() => cloneChildren());
   const [columns, setColumns] = useState(0);
   const [transition, setTransition] = useState(false);
   const [layout, setLayout] = useState({
@@ -423,24 +443,6 @@ function DraggableMasonryLayout(props) {
     console.log("click");
   };
 
-  const [cloneChildren, setCloneChildren] = useState(() => {
-    return React.Children.map(props.children, (child, index) => {
-      // Change eash child
-      return React.cloneElement(child, {
-        draggableItem: {
-          // draggable: "true",
-          onMouseDown: e => onMouseDown(e, items[index]),
-          onMouseEnter: e => onMouseEnterItem(e, items[index]),
-          // onDragOver: e => onDragOverItem(e, items[index]),
-          onDragEnd: e => onDragEnd(e, items[index]),
-          onTouchStart: onTouchStart,
-          onTouchMove: onTouchMove,
-          onTouchEnd: onTouchEnd,
-          onClick: onClickEvent
-        }
-      });
-    });
-  });
   renderChildren = React.Children.map(props.children, (child, index) => {
     // Change eash child
     let newComponent = (
@@ -463,7 +465,7 @@ function DraggableMasonryLayout(props) {
         onTransitionEnd={e => setIsRearranges(false)}
         onClickCapture={onClickCapture}
       >
-        {cloneChildren[index]}
+        {modChildren[index]}
       </div>
     );
     return newComponent;
